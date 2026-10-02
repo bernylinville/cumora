@@ -5,9 +5,9 @@ The `bernylinville/cumora` fork builds the upstream API and React SPA into one L
 ## Build and publish
 
 - `.github/workflows/ghcr.yml` builds and typechecks pull requests without publishing.
-- A push to `main`, or a manual workflow dispatch, publishes `ghcr.io/bernylinville/cumora-server:sha-<full-commit>` and `:main` using the workflow's `GITHUB_TOKEN`.
+- A push to `main` publishes `ghcr.io/bernylinville/cumora-server:sha-<full-commit>` using the workflow's `GITHUB_TOKEN`.
 - Make the GHCR package public after its first publication so the VPS and Molecule CI can pull without registry credentials.
-- Deploy an immutable `@sha256:...` reference from the workflow summary, not the mutable `:main` tag.
+- Pin the immutable `@sha256:...` reference from the workflow summary in a separate `vps-ansible` PR and validate it with Molecule. Do not deploy by tag.
 - The fork's upstream GCP, desktop release, npm publish, and Cloudflare workflows are disabled in GitHub Actions. They are not part of this VPS deployment. The upstream PR checks and the self-host GHCR workflow remain enabled.
 
 ## Deployment contract

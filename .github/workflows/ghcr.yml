@@ -5,7 +5,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,14 +27,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
       - name: Install dependencies without desktop postinstall scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck server
         run: npm run server:typecheck
       - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -46,9 +44,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/bernylinville/cumora-server
-          tags: |
-            type=sha,format=long
-            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+          tags: type=sha,format=long
       - name: Build API and same-origin web app
         id: build
         uses: docker/build-push-action@v6
@@ -56,13 +52,11 @@ jobs:
           context: .
           file: server/docker/cumora-server.Dockerfile
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=cumora-server
-          cache-to: type=gha,mode=max,scope=cumora-server
       - name: Record immutable deployment image
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
