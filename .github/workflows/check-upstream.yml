@@ -1,0 +1,49 @@
+name: Check Cumora Upstream
+
+on:
+  schedule:
+    - cron: '17 1 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/check-upstream.yml
+      - .github/scripts/check-upstream*.cjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-cumora-upstream-${{ github.event_name == 'pull_request' && github.ref || 'propose' }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Upstream automation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test .github/scripts/check-upstream.test.cjs
+
+  propose:
+    if: github.repository == 'bernylinville/cumora' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Propose upstream commits without replacing fork customizations
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const checkUpstream = require('./.github/scripts/check-upstream.cjs');
+            await checkUpstream({github, context, core});

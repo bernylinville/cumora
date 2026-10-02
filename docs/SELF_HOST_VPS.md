@@ -10,6 +10,16 @@ The `bernylinville/cumora` fork builds the upstream API and React SPA into one L
 - Pin the immutable `@sha256:...` reference from the workflow summary in a separate `vps-ansible` PR and validate it with Molecule. Do not deploy by tag.
 - The fork's upstream GCP, desktop release, npm publish, and Cloudflare workflows are disabled in GitHub Actions. They are not part of this VPS deployment. The upstream PR checks and the self-host GHCR workflow remain enabled.
 
+## Automated upstream proposals
+
+`.github/workflows/check-upstream.yml` checks `yetone/cumora:main` daily at 01:17 UTC, or when manually dispatched. If the fork already contains every upstream commit it does nothing. Otherwise it opens one cross-fork PR from `yetone:main` into this fork's `main`, reusing an existing open PR rather than duplicating it. It never force-syncs a branch, approves a PR, or merges one.
+
+Merge an upstream proposal using **Create a merge commit**, not squash/rebase. Preserving upstream ancestry prevents the next check from proposing commits that were already imported, and GitHub's normal merge preserves fork-only files such as `ghcr.yml`. Resolve conflicts and review migrations/OAuth/BYOA compatibility before merging; do not reset this fork to upstream.
+
+The automation uses only its repository `GITHUB_TOKEN`, with read access to contents and write access to pull requests. Enable **Allow GitHub Actions to create and approve pull requests** in the repository's Actions settings; this workflow creates PRs but never approves them. GitHub currently puts CI triggered by a `GITHUB_TOKEN`-created PR into an approval-required state. A maintainer must click **Approve workflows to run** and wait for all checks to pass before merging; missing or unapproved checks are not a pass. No personal PAT is stored in Actions.
+
+After a source PR is merged, the existing main build publishes its immutable image. The infrastructure repository's **Check Cumora Image** workflow checks for a successful build and proposes a separate digest update. That PR runs Molecule before deployment; an upstream merge alone does not upgrade the VPS. Check workflows may be dispatched manually for an immediate check; they do not add a manual image-publication path.
+
 ## Deployment contract
 
 The [vps-ansible Cumora role](https://github.com/bernylinville/vps-ansible/tree/main/roles/cumora) manages Docker Compose. PostgreSQL 18 with pgvector is the durable boundary; Redis is transient. The server serves the SPA, API, uploads, and WebSockets through a single Traefik HTTPS origin. Cloud agent Pods require Kubernetes and are not provided by this deployment; pair a computer using BYOA instead.
